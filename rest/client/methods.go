@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -1780,4 +1781,121 @@ func (c *communicatorImpl) GetTestLogs(ctx context.Context, opts GetTestLogsOpti
 	header.Add(evergreen.APIUserHeader, c.apiUser)
 	header.Add(evergreen.APIKeyHeader, c.apiKey)
 	return utility.NewPaginatedReadCloser(ctx, c.httpClient, resp, header), nil
+}
+
+func (c *communicatorImpl) GetBuilds(ctx context.Context, opts GetBuildsOptions) ([]restmodel.APIBuild, error) {
+	params := url.Values{}
+	if opts.Variant != "" {
+		params["variant"] = []string{opts.Variant}
+	}
+	if opts.IncludeTaskInfo {
+		params["include_task_info"] = []string{"true"}
+	}
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("versions/%s/builds?%s", opts.VersionID, params.Encode()),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespErrorf(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting host by IP address")
+	}
+
+	res := []restmodel.APIBuild{}
+	if err = utility.ReadJSON(resp.Body, &res); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return res, nil
+}
+
+func (c *communicatorImpl) GetTasks(ctx context.Context, opts GetTasksOptions) ([]restmodel.APITask, error) {
+	params := url.Values{}
+	if opts.StartAt != "" {
+		params["start_at"] = []string{opts.StartAt}
+	}
+	if opts.Limit != 0 {
+		params["limit"] = []string{strconv.Itoa(opts.Limit)}
+	}
+	if opts.FetchAllExecutions {
+		params["fetch_all_executions"] = []string{"true"}
+	}
+	if opts.FetchParentIDs {
+		params["fetch_parent_ids"] = []string{"true"}
+	}
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("builds/%s/tasks?%s", opts.BuildID, params.Encode()),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespErrorf(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting host by IP address")
+	}
+
+	res := []restmodel.APITask{}
+	if err = utility.ReadJSON(resp.Body, &res); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return res, nil
+}
+
+func (c *communicatorImpl) GetTests(ctx context.Context, opts GetTestsOptions) ([]restmodel.APITest, error) {
+	params := url.Values{}
+	if opts.StartAt != "" {
+		params["start_at"] = []string{opts.StartAt}
+	}
+	if opts.Limit != 0 {
+		params["limit"] = []string{strconv.Itoa(opts.Limit)}
+	}
+	if opts.Status != "" {
+		params["status"] = []string{opts.Status}
+	}
+	if opts.Execution != 0 {
+		params["execution"] = []string{strconv.Itoa(opts.Execution)}
+	}
+	if opts.TestName != "" {
+		params["test_name"] = []string{opts.TestName}
+	}
+	if opts.Latest {
+		params["latest"] = []string{"true"}
+	}
+	info := requestInfo{
+		method: http.MethodGet,
+		path:   fmt.Sprintf("tasks/%s/tests?%s", opts.TaskID, params.Encode()),
+	}
+
+	resp, err := c.request(ctx, info, nil)
+	if err != nil {
+		return nil, errors.Wrapf(err, "sending request to find host by IP address")
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusUnauthorized {
+		return nil, util.RespErrorf(resp, AuthError)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, util.RespErrorf(resp, "getting host by IP address")
+	}
+
+	res := []restmodel.APITest{}
+	if err = utility.ReadJSON(resp.Body, &res); err != nil {
+		return nil, errors.Wrap(err, "reading JSON response body")
+	}
+	return res, nil
 }

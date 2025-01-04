@@ -148,6 +148,10 @@ type Communicator interface {
 
 	// RevokeGitHubDynamicAccessToken revokes the given GitHub dynamic access tokens.
 	RevokeGitHubDynamicAccessTokens(ctx context.Context, taskID string, tokens []string) error
+
+	GetBuilds(ctx context.Context, opts GetBuildsOptions) ([]restmodel.APIBuild, error)
+	GetTasks(ctx context.Context, opts GetTasksOptions) ([]restmodel.APITask, error)
+	GetTests(ctx context.Context, opts GetTestsOptions) ([]restmodel.APITest, error)
 }
 
 // GetTaskLogsOptions are the options for fetching task logs for a given task.
@@ -177,4 +181,28 @@ type GetTestLogsOptions struct {
 	PrintTime     bool
 	PrintPriority bool
 	Paginate      bool
+}
+
+type GetBuildsOptions struct {
+	VersionID       string
+	Variant         string
+	IncludeTaskInfo bool
+}
+
+type GetTasksOptions struct {
+	BuildID            string
+	StartAt            string
+	Limit              int
+	FetchAllExecutions bool
+	FetchParentIDs     bool
+}
+
+type GetTestsOptions struct {
+	TaskID    string
+	StartAt   string
+	Limit     int
+	Status    string
+	Execution int
+	TestName  string
+	Latest    bool
 }
